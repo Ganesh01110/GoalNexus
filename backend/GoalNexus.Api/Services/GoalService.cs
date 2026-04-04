@@ -23,7 +23,7 @@ public class GoalService : IGoalService
     public GoalService(IAmazonDynamoDB dynamoDb, ILogger<GoalService> logger)
     {
         _dynamoDb = dynamoDb;
-        _context = new DynamoDBContext(dynamoDb);
+        _context = new DynamoDBContext(dynamoDb); // Note: In newer SDKs, preference is for builder, but this is fine for now if initialized correctly.
         _logger = logger;
     }
 
