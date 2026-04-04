@@ -3,8 +3,8 @@ import axios from 'axios'
 import { v4 as uuidv4 } from 'uuid'
 import { PlusIcon, TrashIcon, CheckCircleIcon, RocketLaunchIcon } from '@heroicons/react/24/outline'
 
-// API Base URL - Adjust if your backend port is different
-const API_BASE = 'http://localhost:5136/api/goals'
+// Uses environment variable if hosted, otherwise defaults to local dev
+const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5136/api/goals'
 
 interface Goal {
   userId: string
