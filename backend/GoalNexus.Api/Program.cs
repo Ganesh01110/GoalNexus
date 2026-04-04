@@ -9,6 +9,10 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
+// Hybrid Bridge: Allows app to run natively on AWS Lambda Serverless OR Local Kestrel
+builder.Services.AddAWSLambdaHosting(LambdaEventSource.HttpApi);
+
+
 // Configure AWS Options
 var awsOptions = builder.Configuration.GetAWSOptions();
 builder.Services.AddDefaultAWSOptions(awsOptions);

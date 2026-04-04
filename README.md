@@ -1,84 +1,212 @@
-# GoalNexus: Modern Full-Stack Goal Tracker
+# 🎯 GoalNexus — Anonymous Full-Stack Goal Tracker
 
-GoalNexus is a minimalistic, premium web application designed to help you track your personal goals without the friction of account creation. It showcases how to integrate **ASP.NET Core Minimal APIs** with **React (Tailwind)** and **AWS DynamoDB**.
+> A minimalistic, privacy-first goal tracking web app. No accounts, no passwords — just your goals.
 
-## 🚀 How it Works (Privacy First)
-GoalNexus uses an **Anonymous ID** system. When you visit the site, a unique identifier is generated and saved in your browser's local storage.
-- **Privacy**: Your goals are linked to your browser's ID.
-- **Sharing**: If you share the link, others see their own empty dashboard (they get their own ID).
-- **Simplicity**: No passwords, no emails, just goals.
+Built with **ASP.NET Core Minimal APIs** · **React + Tailwind CSS v4** · **AWS DynamoDB** · **Terraform**
 
 ---
 
-## 🛠️ Backend Deep Dive (ASP.NET Core)
+## ✨ Features
 
-The backend is built using the modern **Minimal APIs** pattern in .NET, which reduces boilerplate code and focuses on performance.
+- 🔒 **Anonymous by Design** — A unique Secret ID is generated in your browser. No sign-up required.
+- 🌐 **Cloud-Native Storage** — Goals are persisted in AWS DynamoDB, available across sessions.
+- ⚡ **Real-time CRUD** — Add, complete, and delete goals instantly.
+- 🏗️ **Infrastructure as Code** — One command (`terraform apply`) provisions everything.
+- 🔄 **CI/CD Pipeline** — GitHub Actions validates Backend, Frontend, and Terraform in parallel.
+
+---
+
+## 🚀 How It Works (Privacy Model)
+
+GoalNexus uses an **Anonymous ID** system:
+
+1. **First Visit** → A unique UUID is generated and saved in your browser's `localStorage`.
+2. **Your Data** → Every goal you create is linked to that UUID in DynamoDB.
+3. **Sharing the Link** → If someone else opens the same URL, they get their **own** UUID and see an empty dashboard.
+4. **Result** → Complete data isolation without authentication.
+
+---
+
+## 🛠️ Tech Stack
+
+| Layer | Technology | Purpose |
+|-------|-----------|---------|
+| **Frontend** | React 19, Tailwind CSS v4, Vite 8 | Modern SPA with hot-reload |
+| **Backend** | ASP.NET Core 9 (Minimal APIs) | RESTful API with Swagger docs |
+| **Database** | AWS DynamoDB | Serverless NoSQL storage |
+| **Infra** | Terraform | Infrastructure as Code |
+| **CI/CD** | GitHub Actions | Parallel build validation |
+
+---
+
+## 📂 Backend Deep Dive (ASP.NET Core)
+
+The backend uses the modern **Minimal APIs** pattern — no controllers, no boilerplate. Everything is explicit and direct.
 
 ### File Structure & Roles
-- `Program.cs`: The "Brain". It configures services (AWS, CORS, Dependency Injection) and defines the API endpoints (Routes).
-- `Models/Goal.cs`: The "Blueprint". Defines what a Goal looks like (UserId, GoalId, Title, etc.) and matches the DynamoDB schema.
-- `Services/GoalService.cs`: The "Worker". Handles all database logic (Save, Delete, Update) using the AWS SDK for DynamoDB.
-- `appsettings.json`: The "Secretary". Stores configuration like AWS region (default: us-east-1).
-- `Properties/launchSettings.json`: The "Map". Defines which port the app runs on (Default: 5136).
+
+```
+backend/GoalNexus.Api/
+├── Program.cs                    # App entry point: service config + API route definitions
+├── Models/
+│   └── Goal.cs                   # Data model with DynamoDB table/key annotations
+├── Services/
+│   └── GoalService.cs            # Business logic: all DynamoDB CRUD operations
+├── Properties/
+│   └── launchSettings.json       # Dev server config (port: 5136)
+├── appsettings.json              # App config (AWS region, logging levels)
+└── GoalNexus.Api.csproj          # Project dependencies (AWS SDK, Swashbuckle)
+```
+
+### How Each File Works
+
+| File | Role | What It Does |
+|------|------|-------------|
+| `Program.cs` | **The Brain** | Registers AWS services, configures CORS, defines all 4 REST endpoints, enables Swagger UI |
+| `Goal.cs` | **The Blueprint** | C# class annotated with `[DynamoDBTable]`, `[DynamoDBHashKey]`, `[DynamoDBRangeKey]` to map directly to DynamoDB |
+| `GoalService.cs` | **The Worker** | Uses `DynamoDBContext` with explicit `OverrideTableName` config for reliable table access |
+| `appsettings.json` | **The Config** | Stores the AWS region (`ap-south-1`) so the SDK knows which datacenter to connect to |
+| `launchSettings.json` | **The Map** | Tells `dotnet run` to serve the API on `http://localhost:5136` |
+
+### API Endpoints
+
+| Method | Route | Description |
+|--------|-------|-------------|
+| `GET` | `/api/goals/{userId}` | Fetch all goals for a user |
+| `POST` | `/api/goals` | Create a new goal |
+| `PATCH` | `/api/goals/{userId}/{goalId}/toggle` | Toggle completion status |
+| `DELETE` | `/api/goals/{userId}/{goalId}` | Permanently delete a goal |
 
 ### Data Flow
-1. **Request**: Frontend sends a JSON request (e.g., `POST /api/goals`) to port `5136`.
-2. **Middleware**: ASP.NET checks for **CORS** permission (allowing React to talk to it) and logs the request.
-3. **Endpoint**: `Program.cs` matches the route and hands the data to `IGoalService`.
-4. **Service**: `GoalService` uses the **DynamoDB Context** to save the C# object directly into the AWS cloud.
-5. **Response**: A Success/Error message is sent back to the React frontend.
+
+```
+Browser (React)
+    │
+    ▼
+POST /api/goals  ──►  Program.cs (Route Matching)
+                           │
+                           ▼
+                      GoalService.cs (Business Logic)
+                           │
+                           ▼
+                      AWS DynamoDB (Cloud Storage)
+                           │
+                           ▼
+                      Response ──►  Browser Updates UI
+```
 
 ---
 
-## ⚙️ How to Run & Verify Locally
+## ⚙️ Local Development Setup
 
-### 1. Cloud Infrastructure (One-time)
-Ensure you have AWS credentials set up, then provision the table:
+### Prerequisites
+
+- [.NET 9 SDK](https://dotnet.microsoft.com/download)
+- [Node.js 20+](https://nodejs.org/)
+- [Terraform](https://www.terraform.io/downloads)
+- [AWS CLI](https://aws.amazon.com/cli/) configured with `aws configure`
+
+### Step 1: Provision the Database
+
 ```bash
 cd terraform
 terraform init
-terraform apply
+terraform apply     # Type 'yes' when prompted
 ```
 
-### 2. Backend Verification
+### Step 2: Start the Backend
+
 ```bash
 cd backend/GoalNexus.Api
 dotnet run
 ```
-**To verify**: Open `http://localhost:5136/swagger` in your browser. You can test the API directly from this visual interface!
+> **Verify**: Open [http://localhost:5136/swagger](http://localhost:5136/swagger) — you should see the interactive API docs.
+>
+> **Pro Tip**: Use `dotnet watch run` instead for automatic hot-reload on code changes.
 
-### 3. Frontend Selection
+### Step 3: Start the Frontend
+
 ```bash
 cd frontend
-npm install
+npm install         # First time only
 npm run dev
 ```
-**To verify**: Open the URL shown in your terminal (usually `http://localhost:5173`). Add a goal and check your terminal logs—you'll see the backend logging the interaction!
-
----
+> **Verify**: Open [http://localhost:5173](http://localhost:5173) — add a goal and watch the backend terminal log the interaction!
 
 ---
 
 ## 🏗️ Infrastructure Management (Terraform)
 
-Terraform allows you to manage your AWS resources as code.
+Terraform provisions and manages all AWS resources as code.
 
-- **Deploy**: `terraform init` followed by `terraform apply` to build the DynamoDB table.
-- **Tear Down**: When you're done or want to avoid any potential costs (though DynamoDB has an 25GB free tier), use:
-```bash
-terraform destroy
-```
+| Command | What It Does |
+|---------|-------------|
+| `terraform init` | Downloads the AWS provider plugin (one-time) |
+| `terraform plan` | Preview what will be created/changed |
+| `terraform apply` | Create the DynamoDB table in AWS |
+| `terraform destroy` | **Tear down** all resources (removes the table to avoid costs) |
+
+> **Cost**: DynamoDB has a generous **25GB Always-Free** tier. This project uses minimal capacity (5 RCU/WCU), so you should incur **zero cost** for personal use.
 
 ---
 
-## 🔐 GitHub Configuration (Secrets)
+## 🔐 AWS Credentials Setup
 
-To enable the **GitHub Action** (CI/CD), you must add your AWS credentials as "Secrets" in your repository settings:
+### Where to Get Your AWS Keys
 
-1. Go to **Settings** > **Secrets and variables** > **Actions**.
-2. Add the following **Repository secrets**:
-   - `AWS_ACCESS_KEY_ID`: Your AWS Access Key.
-   - `AWS_SECRET_ACCESS_KEY`: Your AWS Secret Key.
-   - `AWS_REGION`: `us-east-1` (or your preferred region).
+1. Log in to the [AWS Management Console](https://console.aws.amazon.com)
+2. Click your **username** (top-right corner) → **Security credentials**
+3. Scroll to **"Access keys"** section → Click **"Create access key"**
+4. Select **"Command Line Interface (CLI)"** as the use case
+5. **Copy** both values:
+   - `Access Key ID` (looks like: `AKIAIOSFODNN7EXAMPLE`)
+   - `Secret Access Key` (looks like: `wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY`)
 
+> ⚠️ **Important**: The Secret Access Key is shown **only once**. Save it securely!
 
+### Local Setup (AWS CLI)
+
+Run this once on your machine:
+
+```bash
+aws configure
+```
+
+Enter your Access Key, Secret Key, and region (`ap-south-1`).
+
+### GitHub Actions Setup (CI/CD)
+
+To enable the automated pipeline:
+
+1. Go to your GitHub repo → **Settings** → **Secrets and variables** → **Actions**
+2. Click **"New repository secret"** and add these three:
+
+| Secret Name | Value |
+|-------------|-------|
+| `AWS_ACCESS_KEY_ID` | Your Access Key ID |
+| `AWS_SECRET_ACCESS_KEY` | Your Secret Access Key |
+| `AWS_REGION` | `ap-south-1` |
+
+---
+
+## 🔄 CI/CD Pipeline
+
+The GitHub Actions workflow (`.github/workflows/deploy.yml`) runs **3 parallel jobs** on every push to `main`:
+
+```
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│  Backend CI     │    │  Frontend CI    │    │  Terraform CI   │
+│                 │    │                 │    │                 │
+│  dotnet restore │    │  npm ci         │    │  terraform init │
+│  dotnet build   │    │  npm run build  │    │  terraform      │
+│                 │    │                 │    │    validate     │
+└─────────────────┘    └─────────────────┘    └─────────────────┘
+```
+
+This ensures broken code is caught **before** it reaches production.
+
+---
+
+## 📄 License
+
+This project is open source and available for learning purposes.
