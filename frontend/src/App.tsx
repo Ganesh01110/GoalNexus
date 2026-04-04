@@ -44,17 +44,24 @@ function App() {
   }
 
   const addGoal = async () => {
-    if (!newGoal.trim()) return
+    console.log("Add button clicked. Current goal text:", newGoal);
+    if (!newGoal.trim()) {
+      console.warn("Goal text is empty, aborting add.");
+      return;
+    }
+    
     try {
+      console.log("Sending POST request to:", API_BASE);
       const response = await axios.post(API_BASE, {
         userId: userId,
         title: newGoal,
         description: "",
-      })
-      setGoals([...goals, response.data])
-      setNewGoal('')
+      });
+      console.log("Goal added successfully:", response.data);
+      setGoals([...goals, response.data]);
+      setNewGoal('');
     } catch (error) {
-      console.error('Error adding goal:', error)
+      console.error('Error adding goal:', error);
     }
   }
 
@@ -151,7 +158,7 @@ function App() {
                 
                 <button
                   onClick={() => deleteGoal(goal.goalId)}
-                  className="p-2 text-slate-600 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-all opacity-0 group-hover:opacity-100"
+                  className="p-2 text-slate-500 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-all"
                 >
                   <TrashIcon className="w-5 h-5" />
                 </button>

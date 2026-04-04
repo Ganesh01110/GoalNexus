@@ -1,6 +1,5 @@
 using Amazon.DynamoDBv2;
 using Amazon.DynamoDBv2.DataModel;
-using Amazon.DynamoDBv2.DocumentModel;
 using GoalNexus.Api.Models;
 
 namespace GoalNexus.Api.Services;
@@ -15,51 +14,53 @@ public interface IGoalService
 
 public class GoalService : IGoalService
 {
-    private readonly IAmazonDynamoDB _dynamoDb;
     private readonly DynamoDBContext _context;
     private readonly ILogger<GoalService> _logger;
     private const string TableName = "GoalNexus_Goals";
+    private readonly DynamoDBOperationConfig _config;
 
     public GoalService(IAmazonDynamoDB dynamoDb, ILogger<GoalService> logger)
     {
-        _dynamoDb = dynamoDb;
-        _context = new DynamoDBContext(dynamoDb); // Note: In newer SDKs, preference is for builder, but this is fine for now if initialized correctly.
+        _context = new DynamoDBContext(dynamoDb);
         _logger = logger;
+        // Failsafe: Always override the table name to match our Terraform resource
+        _config = new DynamoDBOperationConfig { OverrideTableName = TableName };
     }
 
     public async Task<IEnumerable<Goal>> GetGoalsAsync(string userId)
     {
-        _logger.LogInformation("Fetching goals for user: {UserId}", userId);
+        _logger.LogInformation("Fetching goals from {Table} for user: {UserId}", TableName, userId);
         
-        var conditions = new List<ScanCondition>
-        {
-            new ScanCondition("UserId", ScanOperator.Equal, userId)
-        };
-
-        return await _context.QueryAsync<Goal>(userId).GetRemainingAsync();
+        // Use the explicit config here
+        return await _context.QueryAsync<Goal>(userId, _config).GetRemainingAsync();
     }
 
     public async Task CreateGoalAsync(Goal goal)
     {
-        _logger.LogInformation("Creating new goal: {GoalId} for user: {UserId}", goal.GoalId, goal.UserId);
-        await _context.SaveAsync(goal);
+        _logger.LogInformation("Creating new goal in {Table}: {GoalId} for user: {UserId}", TableName, goal.GoalId, goal.UserId);
+        
+        // Use the explicit config here
+        await _context.SaveAsync(goal, _config);
     }
 
     public async Task DeleteGoalAsync(string userId, string goalId)
     {
-        _logger.LogInformation("Deleting goal: {GoalId} for user: {UserId}", goalId, userId);
-        await _context.DeleteAsync<Goal>(userId, goalId);
+        _logger.LogInformation("Deleting goal from {Table}: {GoalId} for user: {UserId}", TableName, goalId, userId);
+        
+        // Use the explicit config here
+        await _context.DeleteAsync<Goal>(userId, goalId, _config);
     }
 
     public async Task ToggleGoalStatusAsync(string userId, string goalId)
     {
-        _logger.LogInformation("Toggling status for goal: {GoalId}", goalId);
+        _logger.LogInformation("Toggling status in {Table} for goal: {GoalId}", TableName, goalId);
         
-        var goal = await _context.LoadAsync<Goal>(userId, goalId);
+        // Use the explicit config here for both Load and Save
+        var goal = await _context.LoadAsync<Goal>(userId, goalId, _config);
         if (goal != null)
         {
             goal.IsCompleted = !goal.IsCompleted;
-            await _context.SaveAsync(goal);
+            await _context.SaveAsync(goal, _config);
         }
     }
 }

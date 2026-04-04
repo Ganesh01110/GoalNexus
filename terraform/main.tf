@@ -1,5 +1,5 @@
 provider "aws" {
-  region = "us-east-1"
+  region = "ap-south-1"
 }
 
 # DynamoDB Table for Goals
@@ -34,5 +34,5 @@ output "dynamodb_table_name" {
 
 # Output the region
 output "aws_region" {
-  value = "us-east-1"
+  value = "ap-south-1"
 }

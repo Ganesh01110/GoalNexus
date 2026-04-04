@@ -40,12 +40,14 @@ jobs:
     - name: Install & Build Frontend
       run: |
         cd frontend
-        npm install
+        npm ci
         npm run build
 
   # --- Infrastructure Validation Job ---
   terraform-ci:
     runs-on: ubuntu-latest
+    env:
+      AWS_DEFAULT_REGION: ${{ secrets.AWS_REGION }}
     steps:
     - uses: actions/checkout@v4
     
